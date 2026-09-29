@@ -41,11 +41,14 @@ Every call runs in exactly one mode, carried by the session itself:
 - In **edit** mode, reads and writes are automatically **allowed** based on the [file rules](#1-file-rules).
 - The **auto** mode **allows** the same calls as the **edit** mode, but also transforms any **ask** into a **deny**, effectively forbidding interractive validations.
 
-The mode is set with the `/mode <manual|edit|auto>` slash command and recorded under the `mode` key of `~/.claude/sessions/<session_id>.json`.
-The claude code permission mode plays no part in it.
+The mode is set with the `/mode <manual|edit|auto>` slash command and recorded per session:
+- The session is the one the user talks to: subagent sessions inherit the mode of their root session.
+- The command never reaches the model as a prompt.
+- The harness's own permission mode plays no part in it.
 
-The command is handled entirely by the `UserPromptSubmit` hook, which stops the prompt before it reaches the model: the `skills/mode/SKILL.md` file only registers the name for the harness and carries no instruction.
-**Only the user switches the mode**: the skill is marked `disable-model-invocation` and the model must never write the session file itself.
+**Only the user switches the mode** - the agent is not allowed to:
+- Invoke the `/mode` command,
+- Write the mode record itself.
 
 A session that records no mode - or a name that no mode answers to - runs in **manual** mode: an unknown session asks rather than acts on its own.
 
@@ -65,7 +68,8 @@ Then **ask** rules take precedence over **allow** ones.
 The agent is **denied** to **access** (read and write) files containing credentials, whatever their location, including:
 - Files with the `.pem`/`.key`/`.p12`/`.pfx`/`.keystore`/`.jks`, `.htpasswd`/`.netrc`/`.npmrc`/`.pgpass` extensions/names,
 - The dotenv (`.env`/`.env.local`/`.env.production`/...) and usual ssh key (`id_rsa`/`id_dsa`/`id_ecdsa`/`id_ed25519`) files,
-- The harness credentials files (`.credentials.json` holding the OAuth tokens, `.claude.json` holding the account identity and the MCP servers environment, and `~/.claude/sessions/*.key` files),
+- The claude code credentials files (`.credentials.json` holding the OAuth tokens, `.claude.json` holding the account identity and the MCP servers environment, and `~/.claude/sessions/*.key` files),
+- The opencode credentials files (`~/.local/share/opencode/auth.json` and `~/.local/share/opencode/mcp-auth.json` holding the providers and MCP tokens, `~/.config/opencode/service.json` holding the background server configuration),
 - Any files under `.ssh/`.
 
 Template files (`.example`, `.sample`, `.template` suffix) are exempted from this rule.
@@ -82,7 +86,11 @@ The agent is **denied** to **write** files in any `.git` directory locations, in
 
 ### 1.3. No harness modifications
 
-The agent is **denied** to **write** files in its harness directories: `~/.claude` and the harness repository holding the hooks (`~/ai-harness`).
+The agent is **denied** to **write** files in the harness directories:
+- This repository (`~/ai-harness`),
+- The claude and opencode directories (`~/.claude`, `~/.config/opencode`, `~/.opencode`, and `~/.local/share/opencode`),
+- The local `.claude/` and `.opencode/` directories of the project,
+- The local `.mcp.json`, `opencode.json`, and `opencode.jsonc` files of the project.
 
 **Reason**: Modifying the harness files would allow the agent to lift its own restrictions.  
 
@@ -92,7 +100,7 @@ When the project directory _is_ a harness directory, **write** are **ask** in **
 
 The agent is **allowed** to **read** files in the following locations, including subfolders (with exceptions listed above):
 - The temporary directories (`/tmp`, `/var/tmp`, etc.),
-- The harness directories (`~/.claude` and the harness repository, cf. §1.3),
+- The harness directories (cf. §1.3),
 - The current project.
 
 In **edit mode**, the agent is **allowed** to **write** files in the following locations, including subfolders (with exceptions listed above):
@@ -124,6 +132,8 @@ If parsing the command line fails outright, the whole request is **denied**.
 A command line that does not carry a meaningful `description` explaining the intent behind that call (why the command is needed) is **denied**.
 
 **Reason**: Clear intent is important for the user to understand the objective in order to validate if the command is adapted to the task and if the impact is proportional to the goal.
+
+NB: the native opencode `shell` tool carries no `description`: the harness plugin replaces it with a `bash` tool that does, and the `shell` tool is **denied**.
 
 ### 2.3. Current directory
 
@@ -470,3 +480,26 @@ The following commands are **allowed**:
 - `docker image prune`.
 
 **Reason:** Building and testing docker images are a normal part of the development process. It may also be useful for running complex command/programs isolated in a container.
+
+## 4. Other tools
+
+### Claude code
+
+> TODO
+
+### Opencode
+
+The `execute` tool (Code Mode) is **denied**.
+
+**Reason**: It runs arbitrary code on the host, which cannot be statically analyzed.
+
+The `glob` tool is **allowed** if both its search path and the literal directory its pattern starts from (ex: `../other` for `../other/**/*.md`) respect the [file rules](#1-file-rules) as _read_ accesses.
+
+The `webfetch` tool is **allowed** for `http://` and `https://` URLs (cf. the [threat model](#threat-model) #3), any other scheme is **ask**.
+
+The `skill`, `subagent`, `todowrite`, and `websearch` tools are **allowed**.
+
+**Reason**: They neither access the local files nor change the system, and the tool calls of a subagent are controlled too.
+
+Any other tool (including the MCP ones) is **ask**.
+Since opencode only asks the user through permission requests, an **ask** on a tool that never requests one becomes a **deny**.

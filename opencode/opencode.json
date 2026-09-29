@@ -1,0 +1,16 @@
+{
+  "permissions": [
+    { "action": "read", "resource": "*", "effect": "ask" },
+    { "action": "edit", "resource": "*", "effect": "ask" },
+    { "action": "glob", "resource": "*", "effect": "ask" },
+    { "action": "grep", "resource": "*", "effect": "ask" },
+    { "action": "shell", "resource": "*", "effect": "ask" },
+    { "action": "subagent", "resource": "*", "effect": "ask" },
+    { "action": "skill", "resource": "*", "effect": "ask" },
+    { "action": "webfetch", "resource": "*", "effect": "ask" },
+    { "action": "websearch", "resource": "*", "effect": "ask" },
+    { "action": "external_directory", "resource": "*", "effect": "ask" },
+    { "action": "execute", "resource": "*", "effect": "deny" },
+    { "action": "question", "resource": "*", "effect": "deny" }
+  ]
+}

@@ -66,7 +66,49 @@ def is_git_dir(path: Path) -> bool:
     """
     return any(part.lower() == ".git" for part in path.parts)
 
+def harness_roots() -> list[Path]:
+    """
+    The directories holding the harnesses configuration, hooks and plugins, whatever the harness making the call:
+    each of them could lift the restrictions of every harness sharing this repository.
+    """
+    home = Path.home()
+    return [
+        home / "ai-harness",
+        (home / ".claude").resolve(),
+        (home / ".config" / "opencode").resolve(),
+        (home / ".opencode").resolve(),
+        (home / ".local" / "share" / "opencode").resolve(),  # the sessions state, holding the session mode
+    ]
+
+def harness_credentials() -> list[Path]:
+    """
+    The harness files holding tokens that are too generically named to be matched by name alone (`auth.json`, `service.json`).
+    Resolved, since the paths they are compared to are: `~/.config/opencode` is usually a symlink to the harness repository.
+    """
+    home = Path.home()
+    return [path.resolve() for path in [
+        home / ".local" / "share" / "opencode" / "auth.json",
+        home / ".local" / "share" / "opencode" / "mcp-auth.json",
+        home / ".config" / "opencode" / "service.json",
+    ]]
+
+def is_harness_config(path: Path, project_root: Path) -> bool:
+    """
+    True for the project files that configure the harness itself (settings, plugins, hooks, MCP servers):
+    the harness loads them with full privileges on the next session.
+    """
+    if not isinstance(path, Path) or not in_project(path, project_root):
+        return False
+    parts = [part.lower() for part in path.relative_to(project_root).parts]
+    if not parts:
+        return False
+    if parts[0] in [".claude", ".opencode"]:
+        return True
+    return len(parts) == 1 and parts[0] in [".mcp.json", "opencode.json", "opencode.jsonc"]
+
 def is_secret(path: Path) -> bool:
+    if path in harness_credentials():
+        return True
     name = path.name.lower()
     if sys.platform == "win32":
         name = name.rstrip(".")  # Windows ignores a trailing dot, so ".env." opens ".env"

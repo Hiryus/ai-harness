@@ -11,3 +11,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
       - run: uv run --directory scripts pytest tests
+
+  lint-opencode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx --yes @biomejs/biome@2.5.14 lint --error-on-warnings opencode/plugins
+      - run: npm install --prefix opencode --no-audit --no-fund
+      - run: npm run --prefix opencode check

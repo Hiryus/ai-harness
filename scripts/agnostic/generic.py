@@ -11,6 +11,7 @@ from agnostic.utils.filesystem import (
     in_harness,
     in_project,
     is_git_dir,
+    is_harness_config,
     is_secret,
     is_tmp_file,
     standardize,
@@ -45,6 +46,8 @@ def check_file_rules(references: list[Reference], context: Context) -> Decision:
         return Decision.deny(f"Refusing to write {format_references(gitdir_files)} inside the .git directory.")
     if harness_files := [ref.text for ref, path in resolved if ref.access is Access.WRITE and in_harness(path, context.harness_roots) and not in_project(path, context.project_root)]:
         return Decision.deny(f"Refusing to write {format_references(harness_files)} inside the harness directory.")
+    if not in_harness(context.project_root, context.harness_roots) and (config_files := [ref.text for ref, path in resolved if ref.access is Access.WRITE and is_harness_config(path, context.project_root)]):
+        return Decision.deny(f"Refusing to write {format_references(config_files)}: they configure the agent harness.")
     if dynamic_files := [ref.text for ref, _ in resolved if ref.dynamic]:
         return Decision.ask(f"{format_references(dynamic_files)} is built from a shell expansion; cannot statically verify which file it targets.")
     if glob_files := [ref.text for ref, _ in resolved if has_glob(ref.text)]:
