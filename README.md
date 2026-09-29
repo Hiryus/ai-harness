@@ -9,10 +9,15 @@ Personal configuration and scripts for various AI harness.
 |  ├─ skills                   - symbolic link to ../skills
 |  ├─ CLAUDE.md                - the global agents instructions
 |  └─ settings.json            - the claude code central configuration
-├─ opencode/                   - the opencode configuration
+├─ opencode/                   - the opencode directory (`~/.config/opencode` links here), only the config is versioned
+|  ├─ plugins/harness/         - the harness plugin
+|  |  ├─ index.ts              - the server part, routing every tool call to the hooks scripts
+|  |  ├─ tui.ts                - the TUI part, handling the `/mode` command
+|  |  └─ mode.ts               - the session mode record, shared by both parts
 |  ├─ skills                   - symbolic link to ../skills
 |  ├─ AGENTS.md                - the global agents instructions
-|  └─ xxx                      - the opencode central configuration
+|  ├─ opencode.json            - the opencode central configuration (permissions fallback when the plugin fails)
+|  └─ package.json             - the plugin dev dependencies (types and type check only, cf. `tsconfig.json`)
 ├─ skills/                     - the skills definitions, shared by all harnesses
 ├─ scripts/                    - the hooks scripts (uv project, cf. `pyproject.toml`)
 |  ├─ agnostic/                - the business rules, free of any provider or I/O concern
@@ -32,7 +37,9 @@ Personal configuration and scripts for various AI harness.
 |  |  ├─ user_prompt_submit.py - the hook handling the `/mode` command and the auto mode note
 |  |  └─ statusline_command.py - the script rendering the status bar in claude code
 |  ├─ opencode/                - the opencode adapters
-|  ├─ tests/                   - `agnostic/` tests the policy from a plain context, `claude/` the payload to response
+|  |  ├─ utils/                - the context factory
+|  |  └─ pre_tool.py           - the decision point of the opencode plugin, for every tool call
+|  ├─ tests/                   - `agnostic/` tests the policy from a plain context, `claude/` and `opencode/` the payload to response
 |  └─ pyproject.toml           - the python project definition and dependencies declaration
 └─ SECURITY.md                 - the security rules specifications
 ```
@@ -56,8 +63,12 @@ The repository must be cloned in `~/ai-harness`: the hooks protect this path as 
 - Run tests with `uv run --directory scripts pytest tests`.
 - Check typings with `uvx ty check scripts`.
 - Lint with `uvx ruff check scripts`.
+- Lint the opencode plugin with `npx @biomejs/biome@2.5.14 lint opencode/plugins`.
+- Check the opencode plugin typings with `npm install --prefix opencode && npm run --prefix opencode check`.
 
 ## How it works
+
+### Claude Code
 
 The claude configuration define several hooks, invoked as modules from `scripts/`
 (`uv run --directory ~/.claude/scripts python -m claude.<hook>`):
@@ -70,10 +81,31 @@ Any direct access to a file (via `Edit`, `Read`, `Write`, or `Grep`) is validate
 The `user_prompt_submit.py` hook has two purposes:
 1. It intercepts the `/mode <manual|edit|auto>` slash command to set the mode of the current session (`/mode info`, or `/mode` alone, reports it). The prompt is stopped there and never reaches the model.
 2. For any other prompt, it injects a system note into the context when the session runs in "auto" mode.
-The mode is written in `~/.claude/sessions/<session_id>.json` and is the only thing the tool hooks consult: the claude code permission mode is not used.
+The mode is written under the `mode` key of `~/.claude/sessions/<session_id>.json` and is the only thing the tool hooks consult: the claude code permission mode is not used.
+The `skills/mode/SKILL.md` file only registers the command name for the harness and carries no instruction. It is marked `disable-model-invocation` so the model cannot call it.
 
 The `statusline_command.py` script is invoked by claude code to draw the status command line.
 It injects the current mode (manual/edit/auto) and useful information like the current model, context size and usage.
+
+### OpenCode
+
+The server part of the `opencode/plugins/harness/` plugin (`index.ts`, v2 API) routes every tool call to `scripts/opencode/pre_tool.py` (`uv run --directory ~/ai-harness/scripts python -m opencode.pre_tool`, JSON on stdin and stdout):
+- The `tool.execute.before` hook sends the raw input of each call, and caches the verdict by call id. A deny throws.
+  An ask throws too for the tools that never request a permission (MCP ones included, for now): nobody would be asked.
+- The `permission.evaluate` hook applies the cached verdict to every permission request of the call (opencode's own `external_directory` asks included). A call asks at most once.
+  The `patch` tool is the exception: its raw input does not list the files it touches, so its `edit` requests are decided on their resources.
+- The native `shell` tool is replaced by a `bash` tool carrying a `description` (cf. [SECURITY.md](SECURITY.md) §2.2), and Code Mode (`execute`) is removed.
+- The mode is read from the `harness.mode` key of the root session metadata. Subagent sessions inherit it.
+
+The TUI part (`tui.ts`) handles the `/mode <manual|edit|auto>` command (`/mode info`, or `/mode` alone, reports it):
+- It writes the `harness.mode` metadata of the root session and answers with a toast, so nothing reaches the model.
+  A session message (`ctx.session.synthetic`) would be sent to the model with the next prompt.
+- On the home screen, no session exists yet: `/mode <name>` creates one with the mode in its metadata, and opens it.
+- The command is registered by the plugins, not as a tool: the model cannot call it.
+- The server plugin registers a silent `/mode` too, as a fallback should the TUI plugin fail to load.
+- The mode is noted in the first prompt of each session, then in the prompts following a change (the last noted mode is kept in the plugin storage).
+
+Any error (spawn, timeout, invalid answer) denies the call. If the plugin itself fails to load, `opencode.json` makes every action ask.
 
 > Analyzing bash commands requires parsing them, which is not exactly easy and not 100% reliable due to the  complexity and commands updates. However, it a good compromise between security and usability. A full sandbox would be better, but would require to include git credentials in the sandbox and is not easy to integrate with claude code while keeping good interractivity with the user.
 >

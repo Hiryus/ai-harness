@@ -1,0 +1,10 @@
+{
+  "kind": "tool",
+  "tool": "bash",
+  "input": {
+    "command": "git status && cat .env",
+    "description": "Check the repository state"
+  },
+  "directory": "/home/hiryus/ai-harness",
+  "mode": "edit"
+}

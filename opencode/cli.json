@@ -1,0 +1,29 @@
+{
+  "$schema": "https://opencode.ai/v2/cli.json",
+  "tabs": {
+    "mode": "off",
+    "layout": "horizontal",
+    "indicators": "status",
+    "enabled": false
+  },
+  "attention": {
+    "sound": true,
+    "volume": 0.30000000000000004
+  },
+  "terminal": {
+    "title": true
+  },
+  "keybinds": {
+    "session.first": "ctrl+pageup",
+    "session.last": "ctrl+pagedown"
+  },
+  "session": {
+    "sidebar": "hide",
+    "thinking": "hide",
+    "grouping": "auto",
+    "permissions": "prompt"
+  },
+  "diffs": {
+    "view": "unified"
+  }
+}
