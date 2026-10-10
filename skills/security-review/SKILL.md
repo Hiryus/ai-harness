@@ -72,6 +72,6 @@ Then:
 
 ## 4. Present, don't implement
 
-- If there is at least one vulnerability, write a consolidated report using the provided [report template](report-template.md) at the repository root with format `security-review-YYYY-MM-DD.md`.
+- If there is at least one vulnerability, write a consolidated report using the provided [template](template.md) at the repository root with format `security-review-YYYY-MM-DD.md`.
 - Print the summary to the user and direct the user towards the written report for details.
 - Do not start implementing unless they've already asked you to go ahead - this workflow produces a plan for the user to approve or redirect.
