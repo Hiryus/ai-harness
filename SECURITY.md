@@ -47,7 +47,7 @@ The mode is set with the `/mode <manual|edit|auto>` slash command and recorded p
 - The harness's own permission mode plays no part in it.
 
 **Only the user switches the mode** - the agent is not allowed to:
-- Invoke the `/mode` command,
+- Invoke the `/mode` command (claude code refuses any run not typed by the user at the prompt),
 - Write the mode record itself.
 
 A session that records no mode - or a name that no mode answers to - runs in **manual** mode: an unknown session asks rather than acts on its own.

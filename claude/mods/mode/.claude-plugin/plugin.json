@@ -1,0 +1,6 @@
+{
+  "name": "harness-mode",
+  "version": "0.1.0",
+  "description": "The `/mode <manual|edit|auto>` command of the AI harness, applied mid-turn and announced to the model at each switch.",
+  "types": "./types/index.d.ts"
+}

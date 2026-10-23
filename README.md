@@ -5,6 +5,7 @@ Personal configuration and scripts for various AI harness.
 ```
 ├─ claude/                     - the claude code directory (`~/.claude` links here), only the config is versioned
 |  ├─ agents/                  - the agents definitions
+|  ├─ mods/mode/               - the `harness-mode` mod, handling the `/mode` command (loaded via `CLAUDE_CODE_PLUGIN_DIRS`)
 |  ├─ scripts                  - symbolic link to ../scripts
 |  ├─ skills                   - symbolic link to ../skills
 |  ├─ CLAUDE.md                - the global agents instructions
@@ -34,7 +35,6 @@ Personal configuration and scripts for various AI harness.
 |  |  ├─ pre_file_access.py    - the hook to control and secure files access from the Read/Edit/Write tools
 |  |  ├─ pre_shell.py          - the hook to control and secure bash calls
 |  |  ├─ post_markdown.py      - the hook to post-process markdown table
-|  |  ├─ user_prompt_submit.py - the hook handling the `/mode` command and the auto mode note
 |  |  └─ statusline_command.py - the script rendering the status bar in claude code
 |  ├─ opencode/                - the opencode adapters
 |  |  ├─ utils/                - the context factory
@@ -65,6 +65,7 @@ The repository must be cloned in `~/ai-harness`: the hooks protect this path as 
 - Lint with `uvx ruff check scripts`.
 - Lint the opencode plugin with `npx @biomejs/biome@2.5.14 lint opencode/plugins`.
 - Check the opencode plugin typings with `npm install --prefix opencode && npm run --prefix opencode check`.
+- Validate and test the claude mod with `claude plugin validate claude/mods/mode && claude plugin test claude/mods/mode`.
 
 ## How it works
 
@@ -74,15 +75,13 @@ The claude configuration define several hooks, invoked as modules from `scripts/
 (`uv run --directory ~/.claude/scripts python -m claude.<hook>`):
 - `claude/pre_file_access.py` fires before the `Edit|Read|Write|Grep` tool calls,
 - `claude/pre_shell.py` fires before the `Bash` tool calls.
-- `claude/user_prompt_submit.py` fires before all the user's prompts.
 
 Any direct access to a file (via `Edit`, `Read`, `Write`, or `Grep`) is validated by the `pre_file_access.py` script and any bash command is validated by the `pre_shell.py` script implemented based on [specifications rules](SECURITY.md).
 
-The `user_prompt_submit.py` hook has two purposes:
-1. It intercepts the `/mode <manual|edit|auto>` slash command to set the mode of the current session (`/mode info`, or `/mode` alone, reports it). The prompt is stopped there and never reaches the model.
-2. For any other prompt, it injects a system note into the context when the session runs in "auto" mode.
-The mode is written under the `mode` key of `~/.claude/sessions/<session_id>.json` and is the only thing the tool hooks consult: the claude code permission mode is not used.
-The `skills/mode/SKILL.md` file only registers the command name for the harness and carries no instruction. It is marked `disable-model-invocation` so the model cannot call it.
+The `claude/mods/mode/` mod (`harness-mode`, loaded through `CLAUDE_CODE_PLUGIN_DIRS` in `settings.json`) handles the `/mode <manual|edit|auto>` command (`/mode info`, or `/mode` alone, reports it):
+1. The command is `immediate`: typed mid-turn, it runs at once and applies to the next tool call. It never reaches the model, and is refused unless typed by the user at the prompt.
+2. The mode is written under the `mode` key of `~/.claude/sessions/<session_id>.json` and is the only thing the tool hooks consult: the claude code permission mode is not used.
+3. Each switch is announced to the model once, beside the next tool result of the main thread (or the next prompt when no tool runs before). The default (manual) mode is not announced, and the announcement is repeated after a compaction.
 
 The `statusline_command.py` script is invoked by claude code to draw the status command line.
 It injects the current mode (manual/edit/auto) and useful information like the current model, context size and usage.

@@ -1,7 +1,8 @@
 {
   "env": {
     "CLAUDE_STREAM_IDLE_TIMEOUT_MS": "600000",
-    "API_TIMEOUT_MS": "600000"
+    "API_TIMEOUT_MS": "600000",
+    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/mode"
   },
   "attribution": {
     "commit": "",
@@ -67,16 +68,6 @@
           {
             "type": "command",
             "command": "uv run --directory $HOME/.claude/scripts python -m claude.post_markdown"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run --directory $HOME/.claude/scripts python -m claude.user_prompt_submit"
           }
         ]
       }
