@@ -6,7 +6,7 @@ Reads the status-line JSON payload from stdin and prints one line of colored tex
 import json
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import SupportsFloat, SupportsInt
 
@@ -85,8 +85,8 @@ def get_usage_color(pct:float) -> str:
 
 def format_time_until(unix_ts:float) -> str|None:
     try:
-        reset_at = datetime.fromtimestamp(unix_ts, tz=timezone.utc)
-        diff = reset_at - datetime.now(timezone.utc)
+        reset_at = datetime.fromtimestamp(unix_ts, tz=UTC)
+        diff = reset_at - datetime.now(UTC)
         total_minutes = diff.total_seconds() / 60
         if total_minutes <= 0:
             return None
