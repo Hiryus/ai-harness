@@ -7,10 +7,10 @@ import sys
 from pathlib import Path
 
 import pytest
+from session_state import write_mode
 
 import claude.utils.session
 from claude.pre_shell import main
-from claude.utils.session import write_mode
 
 HOOK = "pre_shell.py"
 ROOT = "/proj"

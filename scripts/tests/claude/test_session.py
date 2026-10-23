@@ -6,9 +6,10 @@ import json
 from pathlib import Path
 
 import pytest
+from session_state import write_mode
 
 import claude.utils.session
-from claude.utils.session import read_mode, state_file, write_mode
+from claude.utils.session import read_mode, state_file
 
 SESSION = "6c194564-b08a-44dc-9661-8d05e07cb52d"
 

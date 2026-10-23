@@ -9,10 +9,10 @@ import sys
 from pathlib import Path
 
 import pytest
+from session_state import write_mode
 
 import claude.utils.session
 from claude.statusline_command import main
-from claude.utils.session import write_mode
 
 SESSION = "6c194564-b08a-44dc-9661-8d05e07cb52d"
 
