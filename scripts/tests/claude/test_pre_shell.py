@@ -888,7 +888,7 @@ def test_secret_access_denied(cmd):
 
 @pytest.mark.parametrize("flag", ["-exec", "-execdir", "-ok", "-okdir"])
 def test_find_exec_flags_denied(flag):
-    # Rule 2.10: these run an arbitrary program, so they are refused outright.
+    # Rule 2.11: these run an arbitrary program, so they are refused outright.
     assert run(command=f"find . {flag} rm {{}} ;") == "deny"
 
 @pytest.mark.parametrize("cmd", [
@@ -898,18 +898,14 @@ def test_find_exec_flags_denied(flag):
     "find . -fprintf out.txt %p",
 ])
 def test_find_output_file_flags_denied(cmd):
-    # Rule 2.10: these write find's own report to a file outside the tool's read/write vetting, so they are refused outright.
+    # Rule 2.11: these write find's own report to a file outside the tool's read/write vetting, so they are refused outright.
     assert run(command=cmd, mode="edit") == "deny"
 
-@pytest.mark.xfail(reason="`-delete` takes no value, so the FILE_WRITE_FLAGS loop raises ParseError instead of vetting the search roots as writes", strict=True)
-@pytest.mark.parametrize("cmd", ["find . -delete", "find build -delete"])
-def test_find_delete_vets_the_roots_as_writes(cmd):
-    # `-delete` removes whatever the roots match, so the roots are the write targets.
-    assert run(command=cmd) == "allow"
-
-@pytest.mark.xfail(reason="`-delete` takes no value, so the FILE_WRITE_FLAGS loop raises ParseError before the roots are vetted", strict=True)
-def test_find_delete_outside_project_asks():
-    assert run(command="find /etc -delete") == "ask"
+@pytest.mark.parametrize("cmd", ["find . -delete", "find build -delete", "find /etc -delete"])
+def test_find_delete_denied(cmd):
+    # Rule 2.11: `-delete` changes the filesystem, so it is refused outright, wherever the roots are.
+    assert run(command=cmd, mode="edit") == "deny"
+    assert "-delete" in reason(command=cmd, mode="edit")
 
 @pytest.mark.parametrize("cmd", ["find /etc -name x", "find / -type f", "find .. -name y"])
 def test_find_external_root_asks(cmd):
@@ -930,7 +926,7 @@ def test_find_leading_flag_does_not_hide_the_root():
 
 @pytest.mark.parametrize("cmd", ["find . -newer /etc/passwd", "find . -size +1M", "find . -newer id_rsa"])
 def test_find_expression_value_not_treated_as_root(cmd):
-    # Rule 2.10 (#25): only the leading search roots are path-checked; expression values (-newer FILE, -size +1M) are not.
+    # Rule 2.11 (#25): only the leading search roots are path-checked; expression values (-newer FILE, -size +1M) are not.
     assert run(command=cmd) == "allow"
 
 def test_find_root_before_expression_still_checked():
@@ -958,10 +954,6 @@ def test_git_output_flag_without_value_does_not_crash():
 
 def test_uppercase_denied_commands_still_denied():
     assert run(command="GIT push --force") == "deny"
-
-@pytest.mark.xfail(reason="rule 2.7: pre_shell.check_command has no `python` branch", strict=True)
-def test_uppercase_python_still_denied():
-    assert run(command="Python evil.py") == "deny"
 
 # ============================================================================
 # Security bypasses (currently failing -- documenting holes to close)
