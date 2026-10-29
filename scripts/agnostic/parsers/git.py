@@ -92,17 +92,23 @@ GRAMMAR = CommandSyntax(
         CommandSyntax(aliases=["reset"], flags=[
             Flag(name="hard", keys=["--hard"], value_required=False),
         ]),
+        # Only the read-only flags are tabled, on the read verbs only: anything else stays untabled so the analyzer sends it to ASK.
         CommandSyntax(aliases=["remote"], flags=[
             Flag(name="verbose", keys=["--verbose", "-v"], value_required=False),
         ], subcommands=[
             CommandSyntax(aliases=["add"]),
-            CommandSyntax(aliases=["get-url"]),
+            CommandSyntax(aliases=["get-url"], flags=[
+                Flag(name="all", keys=["--all"], value_required=False),
+                Flag(name="push", keys=["--push"], value_required=False),
+            ]),
             CommandSyntax(aliases=["remove", "rm"]),
             CommandSyntax(aliases=["rename"]),
             CommandSyntax(aliases=["set-branches"]),
             CommandSyntax(aliases=["set-head"]),
             CommandSyntax(aliases=["set-url"]),
-            CommandSyntax(aliases=["show"]),
+            CommandSyntax(aliases=["show"], flags=[
+                Flag(name="no-query", keys=["-n"], value_required=False),
+            ]),
             CommandSyntax(aliases=["prune"]),
             CommandSyntax(aliases=["update"]),
         ]),

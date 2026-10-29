@@ -63,6 +63,13 @@ BRANCH_READONLY_ARGS = [
     "verbose",
 ]
 
+REMOTE_READONLY_ARGS = [
+    "all",
+    "no-query",
+    "push",
+    "verbose",
+]
+
 
 def validate(command:CommandLine, context:Context) -> Decision:
     """
@@ -75,7 +82,7 @@ def validate(command:CommandLine, context:Context) -> Decision:
 
     An untabled flag is NOT an ASK here: git has ~150 subcommands, so nearly every real line carries one (`-m`, `--list`, `-s`, ...).
     Such a flag stays visible as an operand, which is exactly what `add`/`commit`/`mv`/`rm` path-check.
-    The `branch` and `config` verbs deviate: their tables list every read-only spelling, so anything untabled is a write and asks.
+    The `branch`, `config` and `remote` verbs deviate: their tables list every read-only spelling, so anything untabled is a write and asks.
     """
     invocation = git.parse(command)
     verb = invocation.cmd_parts[1] if len(invocation.cmd_parts) > 1 else None
@@ -133,6 +140,10 @@ def validate(command:CommandLine, context:Context) -> Decision:
         return Decision.allow("`git reset` is allowed by default.")
 
     if verb == "remote":
+        # Checked before the sub-verb: an untabled flag or a root value flag (`-o`) may have swallowed it, and `git remote` then looks bare.
+        disallowed_args = [x for x in invocation.options if x.name not in REMOTE_READONLY_ARGS]
+        if any(disallowed_args):
+            return Decision.ask(f"`git remote` requires the user validation when using {[x.key for x in disallowed_args]} flags.")
         if invocation.command in ["git remote", "git remote get-url", "git remote show"]:
             return Decision.allow(f"The `{invocation.command}` command is allowed.")
         return Decision.ask(f"The `{invocation.command}` command is not allowed by default.")

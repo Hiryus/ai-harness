@@ -544,6 +544,10 @@ def test_git_mv_rm_pathspec_secret_file_denied(cmd):
     "git remote --verbose",
     "git remote show origin",
     "git remote get-url origin",
+    "git remote -v show origin",
+    "git remote show -n origin",
+    "git remote get-url --push origin",
+    "git remote get-url --all origin",
 ])
 def test_git_remote_readonly_allowed(cmd):
     assert run(command=cmd) == "allow"
@@ -568,11 +572,15 @@ def test_git_remote_write_asks(cmd):
 def test_git_remote_write_hidden_behind_flag_asks(cmd):
     assert run(command=cmd) == "ask"
 
-@pytest.mark.xfail(reason="no operand re-walk: an untabled flag is not paired with its value, so `show` reads as the sub-verb and `prune` as its operand; to be reintroduced", strict=True)
-def test_git_remote_write_hidden_behind_untabled_flag_asks():
-    assert run(command="git remote --flag show prune") == "ask"
+@pytest.mark.parametrize("cmd", [
+    "git remote --flag show prune",  # an untabled flag: `show` reads as the sub-verb, `prune` as its operand
+    "git remote -n",                 # a read-only flag tabled on `show`, not on `remote`
+    "git remote add --all x",        # ... nor on a write verb
+    "git remote prune -n origin",
+])
+def test_git_remote_untabled_flag_asks(cmd):
+    assert run(command=cmd) == "ask"
 
-@pytest.mark.xfail(reason="no operand re-walk: the root `-o` swallows the sub-verb and leaves `git remote` looking bare; to be reintroduced", strict=True)
 @pytest.mark.parametrize("cmd", ["git remote -o prune", "git remote -o add", "git remote -o set-url"])
 def test_git_remote_sub_verb_swallowed_by_value_flag_still_asks(cmd):
     # `-o` is a REQUIRED root flag (git commit aside); it must not be able to
