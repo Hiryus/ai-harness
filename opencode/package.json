@@ -1,6 +1,7 @@
 {
   "name": "opencode",
   "private": true,
+  "type": "module",
   "scripts": {
     "check": "tsc"
   },
