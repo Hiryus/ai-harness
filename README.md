@@ -46,10 +46,15 @@ Personal configuration and scripts for various AI harness.
 
 ## Installation
 
-```sh
+```shell
 git clone https://github.com/Hiryus/ai-harness ~/ai-harness
+
+# On linux:
 ln -s ~/ai-harness/claude ~/.claude
 ln -s ~/ai-harness/opencode ~/.config/opencode
+
+# On Windows (Powershell):
+New-Item -ItemType Junction -Path "$HOME\.claude" -Target "D:\dev\ai-harness\claude"
 ```
 
 The repository must be cloned in `~/ai-harness`: the hooks protect this path as a harness directory.
