@@ -15,7 +15,7 @@ from agnostic.models.context import Context
 from agnostic.models.decision import Verdict
 from agnostic.models.mode import Mode
 from agnostic.models.parsing import Access
-from agnostic.utils.filesystem import harness_roots
+from agnostic.utils.filesystem import SECURITY, harness_roots
 
 PROJECT = Path("/proj")
 HARNESS = Path("/opt/some-harness")
@@ -58,7 +58,7 @@ def test_outside_project_asks():
 def test_auto_mode_turns_ask_into_deny_and_points_to_the_harness_rules():
     decision = analyze("/etc/hosts", Access.READ, context(mode=Mode.AUTO))
     assert decision.verdict is Verdict.DENY
-    assert "~/ai-harness/SECURITY.md" in decision.reason
+    assert SECURITY.as_posix() in decision.reason
     assert "/etc/hosts" in decision.reason
 
 # ============================================================================

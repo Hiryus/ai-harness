@@ -5,6 +5,10 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from agnostic.models.parsing import Access, Reference
 
+# The harness repository, wherever it is cloned: this file is `<repository>/scripts/agnostic/utils/filesystem.py`.
+REPOSITORY = Path(__file__).resolve().parents[3]
+SECURITY = REPOSITORY / "SECURITY.md"
+
 
 def expand_glob(path_text: str, cwd: Path) -> list[Path] | None:
     """
@@ -73,7 +77,7 @@ def harness_roots() -> list[Path]:
     """
     home = Path.home()
     return [
-        home / "ai-harness",
+        REPOSITORY,
         (home / ".claude").resolve(),
         (home / ".config" / "opencode").resolve(),
         (home / ".opencode").resolve(),

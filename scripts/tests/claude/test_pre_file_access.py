@@ -9,6 +9,7 @@ import pytest
 from session_state import write_mode
 
 import claude.utils.session
+from agnostic.utils.filesystem import REPOSITORY
 from claude.pre_file_access import main
 
 HOOK = "pre_file_access.py"
@@ -242,17 +243,16 @@ def test_write_claude_dir_denied_outside_a_project_nested_in_it(monkeypatch):
     assert run(file_path=str(harness / "settings.json"), tool_name="Write", cwd=str(scripts), project_root=str(scripts)) == "deny"
 
 def test_write_harness_repository_denied_from_another_project(monkeypatch):
-    # Rule 1.3: the repository holding the hooks is harness too.
+    # Rule 1.3: the repository holding the hooks is harness too, wherever it is cloned.
     monkeypatch.setenv("HOME", FAKE_HOME)
     monkeypatch.setenv("USERPROFILE", FAKE_HOME)
-    path = str(Path(FAKE_HOME) / "ai-harness" / "scripts" / "claude" / "pre_shell.py")
+    path = str(REPOSITORY / "scripts" / "claude" / "pre_shell.py")
     assert run(file_path=path, tool_name="Write", mode="edit") == "deny"
 
 def test_write_harness_repository_allowed_when_it_is_the_project(monkeypatch):
     monkeypatch.setenv("HOME", FAKE_HOME)
     monkeypatch.setenv("USERPROFILE", FAKE_HOME)
-    repository = Path(FAKE_HOME) / "ai-harness"
-    assert run(file_path=str(repository / "claude" / "settings.json"), tool_name="Write", cwd=str(repository), mode="edit") == "allow"
+    assert run(file_path=str(REPOSITORY / "claude" / "settings.json"), tool_name="Write", cwd=str(REPOSITORY), mode="edit") == "allow"
 
 def test_harness_as_project_is_decided_by_the_project_root_not_the_cwd(monkeypatch):
     # Rule 1.3's exception is about the *project* being the harness. The agent

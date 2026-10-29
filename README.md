@@ -6,8 +6,8 @@ Personal configuration and scripts for various AI harness.
 ├─ claude/                     - the claude code directory (`~/.claude` links here), only the config is versioned
 |  ├─ agents/                  - the agents definitions
 |  ├─ mods/mode/               - the `harness-mode` mod, handling the `/mode` command (loaded via `CLAUDE_CODE_PLUGIN_DIRS`)
-|  ├─ scripts                  - symbolic link to ../scripts
-|  ├─ skills                   - symbolic link to ../skills
+|  ├─ scripts                  - link to ../scripts, created at installation (not versioned)
+|  ├─ skills                   - link to ../skills, created at installation (not versioned)
 |  ├─ CLAUDE.md                - the global agents instructions
 |  └─ settings.json            - the claude code central configuration
 ├─ opencode/                   - the opencode directory (`~/.config/opencode` links here), only the config is versioned
@@ -20,6 +20,8 @@ Personal configuration and scripts for various AI harness.
 |  ├─ opencode.json            - the opencode central configuration (permissions fallback when the plugin fails)
 |  └─ package.json             - the plugin dev dependencies (types and type check only, cf. `tsconfig.json`)
 ├─ skills/                     - the skills definitions, shared by all harnesses
+├─ install.sh                  - the linux installation script, creating the links (cf. Installation)
+├─ install.ps1                 - the Windows installation script, creating the junctions (cf. Installation)
 ├─ scripts/                    - the hooks scripts (uv project, cf. `pyproject.toml`)
 |  ├─ agnostic/                - the business rules, free of any provider or I/O concern
 |  |  ├─ analyzers/            - the per-binary policy checks (docker, find, git, grep, readonly, sed)
@@ -46,18 +48,23 @@ Personal configuration and scripts for various AI harness.
 
 ## Installation
 
+Clone the repository anywhere, then run the installation script (no admin privileges required).
+
+On linux:
 ```shell
 git clone https://github.com/Hiryus/ai-harness ~/ai-harness
-
-# On linux:
-ln -s ~/ai-harness/claude ~/.claude
-ln -s ~/ai-harness/opencode ~/.config/opencode
-
-# On Windows (Powershell):
-New-Item -ItemType Junction -Path "$HOME\.claude" -Target "D:\dev\ai-harness\claude"
+bash ~/ai-harness/install.sh
 ```
 
-The repository must be cloned in `~/ai-harness`: the hooks protect this path as a harness directory.
+On Windows (Powershell):
+```powershell
+git clone https://github.com/Hiryus/ai-harness
+powershell -ExecutionPolicy Bypass -File ai-harness\install.ps1
+```
+
+The scripts link `~/.claude` to `claude/`, `~/.config/opencode` to `opencode/`, and `claude/scripts` and `claude/skills` to `scripts/` and `skills/` (symbolic links on linux, junctions on Windows).
+- They are idempotent: a correct link is kept, and a link pointing elsewhere is replaced.
+- An existing claude code (`~/.claude`) or opencode (`~/.config/opencode`) installation is migrated: close the harnesses first. Its content is copied into `claude/` or `opencode/`, without overwriting the repository files (each one kept is reported, the installed one is discarded).
 
 ## Requirements
 
@@ -93,7 +100,7 @@ It injects the current mode (manual/edit/auto) and useful information like the c
 
 ### OpenCode
 
-The server part of the `opencode/plugins/harness/` plugin (`index.ts`, v2 API) routes every tool call to `scripts/opencode/pre_tool.py` (`uv run --directory ~/ai-harness/scripts python -m opencode.pre_tool`, JSON on stdin and stdout):
+The server part of the `opencode/plugins/harness/` plugin (`index.ts`, v2 API) routes every tool call to `scripts/opencode/pre_tool.py` (`uv run --directory <repository>/scripts python -m opencode.pre_tool`, the repository located from the plugin's resolved path, JSON on stdin and stdout):
 - The `tool.execute.before` hook sends the raw input of each call, and caches the verdict by call id. A deny throws.
   An ask throws too for the tools that never request a permission (MCP ones included, for now): nobody would be asked.
 - The `permission.evaluate` hook applies the cached verdict to every permission request of the call (opencode's own `external_directory` asks included). A call asks at most once.

@@ -14,6 +14,7 @@ from agnostic.models.context import Context
 from agnostic.models.decision import Verdict
 from agnostic.models.mode import Mode
 from agnostic.shell import analyze
+from agnostic.utils.filesystem import SECURITY
 
 PROJECT = Path("/proj")
 HARNESS = Path("/opt/some-harness")
@@ -38,7 +39,7 @@ def test_unknown_command_asks():
 def test_auto_mode_is_enforced_by_the_analysis_itself():
     decision = analyze("make build", context(mode=Mode.AUTO))
     assert decision.verdict is Verdict.DENY
-    assert "~/ai-harness/SECURITY.md" in decision.reason
+    assert SECURITY.as_posix() in decision.reason
 
 def test_write_to_harness_is_denied():
     assert verdict("echo x > /opt/some-harness/settings.json", mode=Mode.EDIT) is Verdict.DENY

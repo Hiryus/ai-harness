@@ -6,6 +6,7 @@ from agnostic.models.decision import Decision, Verdict
 from agnostic.models.mode import Mode
 from agnostic.models.parsing import Access, CommandLine, Reference
 from agnostic.utils.filesystem import (
+    SECURITY,
     expand_references,
     has_glob,
     in_harness,
@@ -65,7 +66,7 @@ def check_mode_rules(decision: Decision, context: Context) -> Decision:
     """
     if decision.verdict is Verdict.ASK and context.mode is Mode.AUTO:
         with open(os.path.join(TPL_DIR, "auto_mode_denial.md")) as file:
-            return Decision.deny(file.read().strip().format(reason=decision.reason))
+            return Decision.deny(file.read().strip().format(reason=decision.reason, security=SECURITY.as_posix()))
     return decision
 
 def is_file_access_allowed(path: Path, context: Context, read: bool) -> bool:

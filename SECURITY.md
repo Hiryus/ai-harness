@@ -9,14 +9,14 @@ Every other machine and the local network are considered **untrusted**, includin
 Different threats are identified:
 1. The **data leakage** of sensitive information read by tool calls from the local machine and sent to the LLM servers.
    - While we try to **mitigate** this risk, it is recognized - and accepted - that some data located inside the project directory may leak.
-   - It is however deemed **unacceptable** that the LLM accesses sesitive data _outside_ the project directory.
+   - It is however deemed **unacceptable** that the LLM accesses sensitive data _outside_ the project directory.
    - Information accessible on the (local) network and without authentication is not considered sensitive.
 2. The **corruption** of the system or **destruction** of data inside the computer where the agent is executed, be it due to an error of the LLM or a willing sabotage act originating from the LLM servers (be it by the legitimate owners or intruders).
    - While we try to **mitigate** this risk, it is recognized - and accepted - that the project directory may be corrupted or destroyed.
-   - It is however expected that the project files are versionned using `git` and commited data would not be lost without recovery.
+   - It is however expected that the project files are versioned using `git` and commited data would not be lost without recovery.
    - It is also deemed **unacceptable** to damage the computer system or hosted data outside the project directory.
 3. The **corruption** of the system or **destruction** of data over the network due to network calls made by the agent.
-   - The threat model assumes a **zero-trust** network where data and services are protectd behind strong authentication and authorization.
+   - The threat model assumes a **zero-trust** network where data and services are protected behind strong authentication and authorization.
    - Thus, since authentication secrets are protected by rule #1, and projects should never disclose production credentials, no restriction is put to control, nor restrict, the agent network capability.
 
 
@@ -27,19 +27,19 @@ The following macro rules are defined to control the agent capabilities:
 - Every other call must be executed in a strong sandbox (where only the project directory can be mounted).
 - The agent is only allowed to access files in the project directory or a set of files deemed as "safe".
   * When possible, files containing secrets are forbidden.
-  * Accesses that are not allowed must either be validated by the user, or rejected alltogether.
+  * Accesses that are not allowed must either be validated by the user, or rejected altogether.
 
 A call is declared "safe" if:
 - It only reads or writes data in the allowed folders (readable and writable folders being two different sets).
 - It does not modify the host system (no installation, configuration change, etc.).
-- It does not modify the git history of the current brach (nor any other branch) .
+- It does not modify the git history of the current branch (nor any other branch).
 
 ### Modes
 
 Every call runs in exactly one mode, carried by the session itself:
 - In **manual** mode, only reads are automatically **allowed** based on the [file rules](#1-file-rules).
 - In **edit** mode, reads and writes are automatically **allowed** based on the [file rules](#1-file-rules).
-- The **auto** mode **allows** the same calls as the **edit** mode, but also transforms any **ask** into a **deny**, effectively forbidding interractive validations.
+- The **auto** mode **allows** the same calls as the **edit** mode, but also transforms any **ask** into a **deny**, effectively forbidding interactive validations.
 
 The mode is set with the `/mode <manual|edit|auto>` slash command and recorded per session:
 - The session is the one the user talks to: subagent sessions inherit the mode of their root session.
@@ -87,7 +87,7 @@ The agent is **denied** to **write** files in any `.git` directory locations, in
 ### 1.3. No harness modifications
 
 The agent is **denied** to **write** files in the harness directories:
-- This repository (`~/ai-harness`),
+- This repository, wherever it is cloned,
 - The claude and opencode directories (`~/.claude`, `~/.config/opencode`, `~/.opencode`, and `~/.local/share/opencode`),
 - The local `.claude/` and `.opencode/` directories of the project,
 - The local `.mcp.json`, `opencode.json`, and `opencode.jsonc` files of the project.
@@ -247,18 +247,18 @@ NB: Writing the git configuration files directly is forbidden by the [file rules
 
 #### 2.9.4. Usual commands
 
-The `git add`, `git mv`, and `git rm` commands are **allowed** as long as they respect the the [file rules](#1-file-rules).
+The `git add`, `git mv`, and `git rm` commands are **allowed** as long as they respect the [file rules](#1-file-rules).
 
 The `git commit` command is **allowed**, but [file rules](#1-file-rules) apply when specifying files (including with the `--only`/`-o` flag).
 
 The `git fetch` command is always **allowed**.
 
-The `git reset` command is **allowed** in **edit** and **audto** as long as the option `--hard` is not used and it respect the the [file rules](#1-file-rules).
+The `git reset` command is **allowed** in **edit** and **auto** as long as the option `--hard` is not used and it respect the [file rules](#1-file-rules).
 
 The `git branch`, `git checkout`, and `git switch` commands are:
 - Always **allowed** to read the branches status (ex: `--show-current`, `--merged`, `--contains`, `--list`, etc.),
-- **Allowed** to create a new branch in **edit** and **audto** modes (it's an **ask** in **manual** mode),
-- **Allowed** to switch branches in **edit** and **audto** modes (it's an **ask** in **manual** mode).
+- **Allowed** to create a new branch in **edit** and **auto** modes (it's an **ask** in **manual** mode),
+- **Allowed** to switch branches in **edit** and **auto** modes (it's an **ask** in **manual** mode).
 
 Deleting a branch is not allowed by default and **ask**.
 

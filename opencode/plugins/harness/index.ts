@@ -1,4 +1,4 @@
-// Enforces the rules of `~/ai-harness/SECURITY.md` on every opencode tool call.
+// Enforces the rules of the harness repository `SECURITY.md` on every opencode tool call.
 // The decisions are taken by the python policy shared with other harnesses: this plugin only routes the calls.
 // - `tool.execute.before` sends every call with its raw input to the policy, and caches the verdict by call id.
 //   A deny throws. An ask throws too for the tools that never request a permission, since nobody would be asked.
@@ -7,8 +7,9 @@
 // - The session mode is read from the metadata of the root session, written by `/mode` (cf. `tui.ts`).
 
 import { spawn } from "node:child_process"
-import { homedir } from "node:os"
-import { join } from "node:path"
+import { realpathSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 import type { Plugin } from "@opencode/plugin"
 import type { CommandEditor, CommandInvocation } from "@opencode/plugin/promise/command"
 import type { PermissionEvaluation } from "@opencode/plugin/promise/permission"
@@ -21,7 +22,8 @@ import { MODE_KEY, MODES, modeOf } from "./mode.ts"
 // ============================================================================
 
 const MAX_PARENTS = 16
-const SCRIPTS = join(homedir(), "ai-harness", "scripts")
+// The repository `scripts`, wherever it is cloned: resolved first, since `~/.config/opencode` usually links to `<repository>/opencode`.
+const SCRIPTS = join(dirname(realpathSync(fileURLToPath(import.meta.url))), "..", "..", "..", "scripts")
 const TIMEOUT = 30
 
 // Tools whose raw input does not list the files they touch: decided on their permission requests instead.

@@ -11,7 +11,7 @@
 
 ## Tools usage
 
-The `bash`, `edit`, `glob`, `grep`, `read`, and `write` tools have specific restrictions listed in `~/ai-harness/SECURITY.md`.
+The `bash`, `edit`, `glob`, `grep`, `read`, and `write` tools have specific restrictions listed in the `SECURITY.md` file at the root of the harness repository (the parent of the directory `~/.config/opencode` links to).
 - Read this file before using them.
 - Always use an **allowed** command when possible to avoid asking for the user validation.
   Especially, if you need to run a bash command that is not **allowed** by default, run it inside a docker container.
