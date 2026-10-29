@@ -13,8 +13,9 @@ from agnostic.utils.filesystem import REPOSITORY
 from claude.pre_file_access import main
 
 HOOK = "pre_file_access.py"
-ROOT = "/proj"
-FAKE_HOME = "/home/fakeuser"
+# Resolved like the hook resolves the project root: `/proj` on POSIX, `<drive>:/proj` on Windows.
+ROOT = Path("/proj").resolve().as_posix()
+FAKE_HOME = Path("/home/fakeuser").resolve().as_posix()
 SESSION = "6c194564-b08a-44dc-9661-8d05e07cb52d"
 
 # `project_root` defaults to the `cwd` argument, which reproduces the behavior from
@@ -84,21 +85,21 @@ def test_other_modes_keep_asking(mode):
 
 @pytest.mark.parametrize("tool_name", ["Read", "Write"])
 def test_auto_mode_keeps_allow(tool_name):
-    assert run(file_path="/proj/main.py", tool_name=tool_name, mode="auto") == "allow"
+    assert run(file_path=f"{ROOT}/main.py", tool_name=tool_name, mode="auto") == "allow"
 
 def test_auto_mode_keeps_the_deny_reason():
-    assert run(file_path="/proj/.env", mode="auto") == "deny"
-    assert "secret" in reason(file_path="/proj/.env", mode="auto")
+    assert run(file_path=f"{ROOT}/.env", mode="auto") == "deny"
+    assert "secret" in reason(file_path=f"{ROOT}/.env", mode="auto")
 
 def test_the_mode_comes_from_the_session_not_from_the_harness():
     # The payload carries no permission mode any more: the session file is the only source.
-    assert run(file_path="/proj/main.py", tool_name="Write", mode="manual") == "ask"
-    assert run(file_path="/proj/main.py", tool_name="Write", mode="edit") == "allow"
+    assert run(file_path=f"{ROOT}/main.py", tool_name="Write", mode="manual") == "ask"
+    assert run(file_path=f"{ROOT}/main.py", tool_name="Write", mode="edit") == "allow"
 
 @pytest.mark.parametrize("recorded", ["config", "plan", "acceptEdits", ""])
 def test_a_name_nothing_runs_in_is_manual(recorded):
     # A typo, or a mode from another version, must not hand the session more autonomy than manual.
-    assert run(file_path="/proj/main.py", tool_name="Write", mode=recorded) == "ask"
+    assert run(file_path=f"{ROOT}/main.py", tool_name="Write", mode=recorded) == "ask"
 
 def test_a_session_without_a_state_file_is_manual(sessions):
     assert not sessions.exists()
@@ -107,7 +108,7 @@ def test_a_session_without_a_state_file_is_manual(sessions):
         "hook_event_name": "PreToolUse",
         "session_id": SESSION,
         "tool_name": "Write",
-        "tool_input": {"file_path": "/proj/main.py"},
+        "tool_input": {"file_path": f"{ROOT}/main.py"},
     }, environ={"CLAUDE_PROJECT_DIR": ROOT})
     assert json.loads(result)["hookSpecificOutput"]["permissionDecision"] == "ask"
 
@@ -117,7 +118,7 @@ def test_a_call_without_a_session_id_is_manual():
         "cwd": ROOT,
         "hook_event_name": "PreToolUse",
         "tool_name": "Write",
-        "tool_input": {"file_path": "/proj/main.py"},
+        "tool_input": {"file_path": f"{ROOT}/main.py"},
     }, environ={"CLAUDE_PROJECT_DIR": ROOT})
     assert json.loads(result)["hookSpecificOutput"]["permissionDecision"] == "ask"
 
@@ -125,34 +126,34 @@ def test_a_call_without_a_session_id_is_manual():
 # Secrets
 # ============================================================================
 
-@pytest.mark.parametrize("file_path", ["/proj/.env", "/proj/config/.env.local", "/proj/server.pem", "/proj/id_rsa"])
+@pytest.mark.parametrize("file_path", [f"{ROOT}/.env", f"{ROOT}/config/.env.local", f"{ROOT}/server.pem", f"{ROOT}/id_rsa"])
 def test_secret_files_denied(file_path):
     assert run(file_path=file_path) == "deny"
 
 def test_env_example_is_not_secret():
-    assert run(file_path="/proj/.env.example") == "allow"
+    assert run(file_path=f"{ROOT}/.env.example") == "allow"
 
-@pytest.mark.parametrize("file_path", ["/proj/.env.prod", "/proj/.env.production", "/proj/.ENV.PRODUCTION"])
+@pytest.mark.parametrize("file_path", [f"{ROOT}/.env.prod", f"{ROOT}/.env.production", f"{ROOT}/.ENV.PRODUCTION"])
 def test_production_env_files_denied(file_path):
     assert run(file_path=file_path) == "deny"
 
 @pytest.mark.parametrize("file_path", [
-    "/proj/server.PEM",
-    "/proj/SERVER.Key",
-    "/proj/store.JKS",
-    "/proj/.NETRC",
-    "/proj/ID_RSA",
-    "/proj/.SSH/known_hosts",
+    f"{ROOT}/server.PEM",
+    f"{ROOT}/SERVER.Key",
+    f"{ROOT}/store.JKS",
+    f"{ROOT}/.NETRC",
+    f"{ROOT}/ID_RSA",
+    f"{ROOT}/.SSH/known_hosts",
 ])
 def test_secret_files_denied_whatever_their_spelling(file_path):
     assert run(file_path=file_path) == "deny"
 
 @pytest.mark.parametrize("suffix", [".example", ".sample", ".template", ".EXAMPLE"])
 def test_template_suffixes_are_exempted(suffix):
-    assert run(file_path=f"/proj/.ssh/config{suffix}") == "allow"
+    assert run(file_path=f"{ROOT}/.ssh/config{suffix}") == "allow"
 
 def test_dist_suffix_is_not_a_template():
-    assert run(file_path="/proj/.ssh/config.dist") == "deny"
+    assert run(file_path=f"{ROOT}/.ssh/config.dist") == "deny"
 
 @pytest.mark.parametrize("relative", [".claude/.credentials.json", ".claude.json"])
 def test_harness_credentials_read_denied(monkeypatch, relative):
@@ -180,17 +181,17 @@ def test_harness_configuration_is_not_a_credentials_file(monkeypatch):
 
 @pytest.mark.parametrize("tool", ["Write", "Edit"])
 def test_git_dir_writes_denied(tool):
-    assert run(file_path="/proj/.git/config", tool_name=tool) == "deny"
+    assert run(file_path=f"{ROOT}/.git/config", tool_name=tool) == "deny"
 
 def test_git_dir_read_allowed():
-    assert run(file_path="/proj/.git/config", tool_name="Read") == "allow"
+    assert run(file_path=f"{ROOT}/.git/config", tool_name="Read") == "allow"
 
 # ============================================================================
 # Project location
 # ============================================================================
 
 def test_in_project_allowed():
-    assert run(file_path="/proj/src/main.py") == "allow"
+    assert run(file_path=f"{ROOT}/src/main.py") == "allow"
 
 def test_outside_project_asks():
     assert run(file_path="/other/file.txt") == "ask"
@@ -268,16 +269,16 @@ def test_harness_as_project_is_decided_by_the_project_root_not_the_cwd(monkeypat
 # ============================================================================
 
 def test_missing_project_root_denied():
-    assert run(file_path="/proj/main.py", project_root=None) == "deny"
-    assert "CLAUDE_PROJECT_DIR" in reason(file_path="/proj/main.py", project_root=None)
+    assert run(file_path=f"{ROOT}/main.py", project_root=None) == "deny"
+    assert "CLAUDE_PROJECT_DIR" in reason(file_path=f"{ROOT}/main.py", project_root=None)
 
 @pytest.mark.parametrize("cwd", ["", None])
 def test_missing_cwd_denied(cwd):
-    assert run(file_path="/proj/main.py", cwd=cwd) == "deny"
+    assert run(file_path=f"{ROOT}/main.py", cwd=cwd) == "deny"
 
 def test_relative_path_is_anchored_on_the_cwd():
-    assert run(file_path="notes.txt", cwd="/proj/work", project_root="/proj") == "allow"
-    assert run(file_path="../../elsewhere/notes.txt", cwd="/proj/work", project_root="/proj") == "ask"
+    assert run(file_path="notes.txt", cwd=f"{ROOT}/work", project_root=ROOT) == "allow"
+    assert run(file_path="../../elsewhere/notes.txt", cwd=f"{ROOT}/work", project_root=ROOT) == "ask"
 
 def test_read_outside_claude_dir_still_asks(monkeypatch):
     monkeypatch.setenv("HOME", FAKE_HOME)
@@ -303,29 +304,29 @@ def test_missing_file_path_denied_for_safety():
 # ============================================================================
 
 def test_secret_in_subdir_denied():
-    assert run(file_path="/proj/sub/.env") == "deny"
+    assert run(file_path=f"{ROOT}/sub/.env") == "deny"
 
 def test_ssh_key_denied():
     assert run(file_path="~/.ssh/id_ed25519") == "deny"
 
 def test_pem_example_is_not_secret():
-    assert run(file_path="/proj/a.pem.example") == "allow"
+    assert run(file_path=f"{ROOT}/a.pem.example") == "allow"
 
 @pytest.mark.parametrize("tool", ["MultiEdit", "NotebookEdit"])
 def test_git_dir_other_writes_denied(tool):
-    assert run(file_path="/proj/.git/config", tool_name=tool) == "deny"
+    assert run(file_path=f"{ROOT}/.git/config", tool_name=tool) == "deny"
 
 # ============================================================================
 # Glob patterns
 # ============================================================================
 
-@pytest.mark.parametrize("file_path", ["/proj/*", "/proj/.e*", "/proj/src/?.py"])
+@pytest.mark.parametrize("file_path", [f"{ROOT}/*", f"{ROOT}/.e*", f"{ROOT}/src/?.py"])
 def test_glob_path_in_nonexistent_project_read_allowed(file_path):
-    # ROOT ("/proj") doesn't exist on disk: nothing real could be disclosed,
+    # ROOT doesn't exist on disk: nothing real could be disclosed,
     # so a read is allowed even though expansion can't be verified.
     assert run(file_path=file_path, tool_name="Read") == "allow"
 
-@pytest.mark.parametrize("file_path", ["/proj/*", "/proj/.e*", "/proj/src/?.py"])
+@pytest.mark.parametrize("file_path", [f"{ROOT}/*", f"{ROOT}/.e*", f"{ROOT}/src/?.py"])
 def test_glob_path_in_nonexistent_project_write_asks(file_path):
     assert run(file_path=file_path, tool_name="Write") == "ask"
 
@@ -434,10 +435,10 @@ def grep_run(path:str|None, cwd=ROOT, mode="manual", project_root=SAME_AS_CWD) -
     return grep_output(path, cwd, mode, project_root).get("permissionDecision")
 
 def test_grep_secret_file_path_denied():
-    assert grep_run("/proj/.env") == "deny"
+    assert grep_run(f"{ROOT}/.env") == "deny"
 
 def test_grep_in_project_path_allowed():
-    assert grep_run("/proj/src") == "allow"
+    assert grep_run(f"{ROOT}/src") == "allow"
 
 def test_grep_outside_project_path_asks():
     assert grep_run("/other/dir") == "ask"
@@ -447,7 +448,7 @@ def test_grep_without_path_defaults_to_cwd(tmp_path):
     assert grep_run(None, cwd=str(tmp_path)) == "allow"
 
 def test_grep_without_path_denied_when_cwd_is_outside_project():
-    assert grep_run(None, cwd="/other/dir", project_root="/proj") == "ask"
+    assert grep_run(None, cwd="/other/dir", project_root=ROOT) == "ask"
 
 def test_grep_is_never_treated_as_a_write(tmp_path):
     # Rule "Modes": a write in manual mode would ask; Grep only reads, so it must stay allowed.

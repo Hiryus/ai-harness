@@ -342,7 +342,8 @@ def test_write_outside_project_asks():
 def test_dev_null_redirect_allowed():
     assert run(command="echo x > /dev/null") == "allow"
 
-FAKE_HOME = "/home/fakeuser"
+# Resolved like the hook resolves the harness roots: `/home/fakeuser` on POSIX, `<drive>:/home/fakeuser` on Windows.
+FAKE_HOME = Path("/home/fakeuser").resolve().as_posix()
 
 def test_read_claude_dir_tilde_allowed(monkeypatch):
     monkeypatch.setenv("HOME", FAKE_HOME)
@@ -1400,7 +1401,7 @@ def test_container_argv_options_are_not_checked(cmd):
     assert run(command=cmd) == "allow"
 
 @pytest.mark.parametrize("cmd", [
-    f"docker run --rm -v {Path.home() / '.claude'}:/app:ro -w /app php:cli php -v",  # the reported crash: opaque_tail flag needs a value it doesn't have
+    f"docker run --rm -v {(Path.home() / '.claude').as_posix()}:/app:ro -w /app php:cli php -v",  # the reported crash: opaque_tail flag needs a value it doesn't have
     "docker exec web date -w",                                                       # the `exec` node (`-w` is value_required there)
     "docker compose run --rm web pytest -v",                                         # the `compose run` node
 ])

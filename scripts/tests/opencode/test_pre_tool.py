@@ -13,8 +13,9 @@ import pytest
 
 from opencode.pre_tool import glob_root, main
 
-ROOT = "/proj"
-FAKE_HOME = "/home/fakeuser"
+# Resolved like the plugin resolves the project directory: `/proj` on POSIX, `<drive>:/proj` on Windows.
+ROOT = Path("/proj").resolve().as_posix()
+FAKE_HOME = Path("/home/fakeuser").resolve().as_posix()
 
 # ============================================================================
 # Helpers
@@ -36,14 +37,14 @@ def bash(command:str, description="List the project files", **kwargs) -> str:
 
 @pytest.mark.parametrize("directory", ["", None])
 def test_missing_directory_denied(directory):
-    assert tool("read", {"path": "/proj/main.py"}, directory=directory)["verdict"] == "deny"
+    assert tool("read", {"path": f"{ROOT}/main.py"}, directory=directory)["verdict"] == "deny"
 
 def test_unknown_request_kind_denied():
     assert json.loads(main({"kind": "other", "directory": ROOT}))["verdict"] == "deny"
 
 @pytest.mark.parametrize("mode", [None, "", "config"])
 def test_an_unknown_mode_is_manual(mode):
-    assert tool("write", {"path": "/proj/main.py"}, mode=mode)["verdict"] == "ask"
+    assert tool("write", {"path": f"{ROOT}/main.py"}, mode=mode)["verdict"] == "ask"
 
 # ============================================================================
 # Shell
@@ -90,14 +91,14 @@ def test_forbidden_tools_denied(name, tool_input):
 
 def test_read_follows_the_file_rules():
     assert tool("read", {"path": "main.py"})["verdict"] == "allow"
-    assert tool("read", {"path": "/proj/.env"})["verdict"] == "deny"
+    assert tool("read", {"path": f"{ROOT}/.env"})["verdict"] == "deny"
     assert tool("read", {"path": "/elsewhere/notes.txt"})["verdict"] == "ask"
 
 @pytest.mark.parametrize("name", ["edit", "write"])
 def test_writes_follow_the_mode(name):
-    assert tool(name, {"path": "/proj/main.py"})["verdict"] == "ask"
-    assert tool(name, {"path": "/proj/main.py"}, mode="edit")["verdict"] == "allow"
-    assert tool(name, {"path": "/proj/.git/config"}, mode="edit")["verdict"] == "deny"
+    assert tool(name, {"path": f"{ROOT}/main.py"})["verdict"] == "ask"
+    assert tool(name, {"path": f"{ROOT}/main.py"}, mode="edit")["verdict"] == "allow"
+    assert tool(name, {"path": f"{ROOT}/.git/config"}, mode="edit")["verdict"] == "deny"
 
 @pytest.mark.parametrize("name", ["read", "edit", "write"])
 def test_missing_path_denied(name):
@@ -108,7 +109,7 @@ def test_tmp_is_allowed_despite_opencode_asking_for_external_directories():
 
 def test_grep_checks_the_path_not_the_pattern():
     assert tool("grep", {"pattern": ".env", "path": "src"})["verdict"] == "allow"
-    assert tool("grep", {"pattern": "foo", "path": "/proj/.env"})["verdict"] == "deny"
+    assert tool("grep", {"pattern": "foo", "path": f"{ROOT}/.env"})["verdict"] == "deny"
     assert tool("grep", {"pattern": "foo", "path": "/elsewhere"})["verdict"] == "ask"
 
 def test_grep_without_path_searches_the_project():
@@ -154,9 +155,9 @@ def test_unknown_tools_ask_then_deny_in_auto_mode():
 # ============================================================================
 
 def test_edit_permission_checks_every_resource():
-    assert permission("edit", ["/proj/a.py", "/proj/b.py"], mode="edit")["verdict"] == "allow"
-    assert permission("edit", ["/proj/a.py", "/proj/.env"], mode="edit")["verdict"] == "deny"
-    assert permission("edit", ["/proj/a.py", "/elsewhere/b.py"], mode="edit")["verdict"] == "ask"
+    assert permission("edit", [f"{ROOT}/a.py", f"{ROOT}/b.py"], mode="edit")["verdict"] == "allow"
+    assert permission("edit", [f"{ROOT}/a.py", f"{ROOT}/.env"], mode="edit")["verdict"] == "deny"
+    assert permission("edit", [f"{ROOT}/a.py", "/elsewhere/b.py"], mode="edit")["verdict"] == "ask"
 
 def test_read_permission_resources_are_relative_to_the_project():
     assert permission("read", ["README.md"])["verdict"] == "allow"
@@ -174,14 +175,16 @@ def test_unknown_permission_asks_then_denies_in_auto_mode():
 
 def test_harness_plugins_are_not_writable_from_another_project(monkeypatch):
     monkeypatch.setenv("HOME", FAKE_HOME)
-    plugin = str(Path(FAKE_HOME) / ".config" / "opencode" / "plugins" / "harness" / "index.ts")
+    monkeypatch.setenv("USERPROFILE", FAKE_HOME)
+    plugin =str(Path(FAKE_HOME) / ".config" / "opencode" / "plugins" / "harness" / "index.ts")
     assert tool("write", {"path": plugin}, mode="edit")["verdict"] == "deny"
     assert tool("read", {"path": plugin})["verdict"] == "allow"
 
 def test_opencode_credentials_denied(monkeypatch):
     monkeypatch.setenv("HOME", FAKE_HOME)
-    auth = str(Path(FAKE_HOME) / ".local" / "share" / "opencode" / "auth.json")
+    monkeypatch.setenv("USERPROFILE", FAKE_HOME)
+    auth =str(Path(FAKE_HOME) / ".local" / "share" / "opencode" / "auth.json")
     assert tool("read", {"path": auth})["verdict"] == "deny"
 
 def test_project_plugins_are_not_writable():
-    assert tool("write", {"path": "/proj/.opencode/plugins/evil.ts"}, mode="edit")["verdict"] == "deny"
+    assert tool("write", {"path": f"{ROOT}/.opencode/plugins/evil.ts"}, mode="edit")["verdict"] == "deny"

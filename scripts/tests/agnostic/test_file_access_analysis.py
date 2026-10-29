@@ -6,6 +6,7 @@
 The file rules, exercised straight from a plain `Context`: no payload, no session file, no `~/.claude`.
 """
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -68,6 +69,7 @@ def test_auto_mode_turns_ask_into_deny_and_points_to_the_harness_rules():
 @pytest.mark.parametrize("relative", [".local/share/opencode/auth.json", ".local/share/opencode/mcp-auth.json", ".config/opencode/service.json"])
 def test_opencode_credentials_are_denied(monkeypatch, tmp_path, relative):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     assert verdict(str(tmp_path / relative), Access.READ) is Verdict.DENY
 
 def test_opencode_credentials_are_matched_through_the_config_symlink(monkeypatch, tmp_path):
@@ -75,14 +77,22 @@ def test_opencode_credentials_are_matched_through_the_config_symlink(monkeypatch
     repository = tmp_path / "ai-harness" / "opencode"
     repository.mkdir(parents=True)
     (tmp_path / ".config").mkdir()
-    (tmp_path / ".config" / "opencode").symlink_to(repository)
+    if sys.platform == "win32":
+        # `install.ps1` links with a junction: a symlink needs a privilege Windows users don't hold by default.
+        import _winapi
+        _winapi.CreateJunction(str(repository), str(tmp_path / ".config" / "opencode"))
+    else:
+        (tmp_path / ".config" / "opencode").symlink_to(repository)
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     assert verdict(str(repository / "service.json"), Access.READ) is Verdict.DENY
 
 def test_opencode_sessions_state_is_a_harness_directory(monkeypatch):
     # The session mode lives there: only the user switches it. The home is outside `/tmp`, whose reads are allowed anyway.
-    monkeypatch.setenv("HOME", "/home/fakeuser")
-    state = "/home/fakeuser/.local/share/opencode/opencode.db"
+    home = Path("/home/fakeuser").resolve()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    state = (home / ".local" / "share" / "opencode" / "opencode.db").as_posix()
     roots = harness_roots()
     assert analyze(state, Access.WRITE, Context(current_cwd=PROJECT, harness_roots=roots, mode=Mode.EDIT, project_root=PROJECT)).verdict is Verdict.DENY
     assert analyze(state, Access.READ, Context(current_cwd=PROJECT, harness_roots=roots, mode=Mode.MANUAL, project_root=PROJECT)).verdict is Verdict.ALLOW
